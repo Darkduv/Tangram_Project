@@ -1,0 +1,15 @@
+S'brown'
+p0
+.S'purple'
+p1
+.S'pink'
+p2
+.S'yellow'
+p3
+.S'blue'
+p4
+.S'red'
+p5
+.S'green'
+p6
+.

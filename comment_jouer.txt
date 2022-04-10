@@ -1,0 +1,29 @@
+Comment jouer au Tangram ?
+
+Tout d'abord commençons par les règles du jeu  : 
+Le but est de dessiner l'image proposée avec les figures géométriques à votre disposition.
+
+Donc vous lancez le jeu par la console linux, ou à partir d'idle.
+Ensuite vous cliquez sur "Jouer"
+
+L'image par défault sera un cannard.
+Vous devez donc le remplir : 
+
+Pour ce faire, un clic gauche sur l'image maintenu, permet de la déplacer.
+Un clic droit permet de lui imposer une rotation.
+
+Pour ne pas que ce soit trop dur, le programme ne réagit pas au pixel près, mais à 5 pixels près, c'est à dire que vous devez placer l'image à 5 pixels près de sa bonne position, et le programme la positionnera automatiquement.
+
+Si vous bloquez, allez dans aide puis cliquez sur "coup de pouce" (vous avez droit à deux par partie).
+
+Si vous désirez changer la résolution allez dans fichier => résolution (cela ne prendra effet que la prochaine fois que vous relancerez le jeu).
+Vous pouvez également changer les couleurs des figures géométriques, toujours dans le menu fichier.
+Pour vous aider, le menu de réglage des couleurs est détachable, il vous suffit pour cela de cliquer sur les pointillets en haut du menu.
+
+Le menu "niveau" permet de choisir les images que vous voulez reconstituer.
+
+Enfin le menu "bonus" permet de jouer à 2 mini-jeux, à savoir le taquin et le jeux des allumettes.
+
+
+Bon jeu ! 
+
