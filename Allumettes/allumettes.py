@@ -1,117 +1,134 @@
 #! /usr/bin/python
 # -*- coding: utf-8 -*-
-# ######### Allumettes ###########
 
-from turtle import *
-from tkinter import *
+"""Game of Nim with matches"""
 
+import turtle
+import tkinter
 
-# Fonction qui permet d'autoriser l'effaçage d'une allumette en fonction de plusieurs choses,
-# tout d'abord bien sur si le joueur clique sur une allumette, et ensuite s'il n'a pas déjà
-# effacé pendant son tour une allumette d'un autre étage.
-
-def efface(x, y):
-    a = [x, y]
-    global line_select
-    global state
-    for index, value in enumerate(list_matchstick):
-        z = value.pos()
-        if (abs(a[0] - z[0]) < 10 and abs(a[1] - z[1]) < 25) and (
-                line_select.get() == -1 or z[1] == line_select.get()):
-            value.ht()
-            state -= 1
-            win()
-            if line_select.get() == -1:
-                line_select.set(z[1])
+PATH = ""  # "Allumettes/"
+MATCH_SYMBOL = "match_symbol.gif"
+BG_IMG = "lighted_match.gif"  # background img
 
 
-# La variable état représente le nombre d'allumettes restantes en jeu, quand elle est à 0,
-# l'avant-dernier joueur est le gagnant.
+def set_geometry(window, width: int, height: int) -> None:
+    """Set the geometry of the window, and centers it on the screen"""
+    w_screen = window.winfo_screenwidth()
+    h_screen = window.winfo_screenheight()
+    x_ = (w_screen - width) // 2
+    y_ = (h_screen - height) // 2
+    window.geometry(f'{width}x{height}+{x_}+{y_}')
 
-def win():
-    if state == 0:
-        window_toto2 = Toplevel(window_toto)
-        announce = Label(window_toto2, text=f"Congratulations Player {state_player.get()}, "
-                                            f"you've won !!!")
-        announce.pack()
-        ok_btn = Button(window_toto2, text="OK", command=window_toto2.destroy)
+
+class NimGame:
+    """Game of Nim"""
+
+    def __init__(self):
+        self.window = tkinter.Tk()
+        self.window.title("Matches: Game of Nim")
+
+        set_geometry(self.window, 800, 600)
+
+        canvas1 = tkinter.Canvas(self.window, width=800, height=600)
+        canvas1.pack()
+        screen1 = turtle.TurtleScreen(canvas1)
+
+        screen1.register_shape(PATH + MATCH_SYMBOL)
+        screen1.bgpic(PATH + BG_IMG)
+
+        # The `nb_remaining` attribute represents the number of matches left
+        #  in play, when it is 0, the second last player is the winner."""
+        self.nb_remaining = 16
+
+        # Creation of the 16 cursors which will have the image of a match.
+        #  We place them in a list in order to facilitate their management
+        #  (assigning them the image of the match,
+        #  placing them in the right place, etc.)
+        self.list_matchstick = [turtle.RawTurtle(screen1) for _ in range(16)]
+        for i in self.list_matchstick:
+            i.shape(PATH + MATCH_SYMBOL)
+
+        self.state_player = tkinter.IntVar()
+        self.row_select = tkinter.IntVar()
+
+        self.init_place_matches()
+
+        self.new_game()
+
+        for i in self.list_matchstick:
+            i.onclick(self.remove, btn=1)
+
+        # Création des 2 boutons radio pour changer de joueur
+        # et du bouton recommencer
+        player_1 = tkinter.Radiobutton(
+            text="Joueur 1", variable=self.state_player, value=2,
+            command=lambda: [self.row_select.set(-1)])
+        player_2 = tkinter.Radiobutton(
+            text="Joueur 2", variable=self.state_player, value=1,
+            command=lambda: [self.row_select.set(-1)])
+        restart = tkinter.Button(text="New game", command=self.new_game)
+
+        # placing the buttons
+        player_1.place(x=150, y=100)
+        player_2.place(x=150, y=150)
+        restart.place(x=150, y=200)
+
+    def init_place_matches(self) -> None:
+        # the list contains the positions of each match,
+        # to form the shape of a triangle
+        triangle_toto = [[0, 210], [-30, 140], [0, 140], [30, 140], [-60, 70],
+                         [-30, 70], [0, 70], [30, 70], [60, 70], [-90, 0],
+                         [-60, 0], [-30, 0], [0, 0], [30, 0], [60, 0], [90, 0]]
+
+        # Moving the matches at the right place
+        for match, position in zip(self.list_matchstick, triangle_toto):
+            match.up()
+            match.goto(position)
+            match.down()
+
+    def mainloop(self):
+        self.window.mainloop()
+
+    def win(self):
+        if self.nb_remaining != 0:
+            return
+        window2 = tkinter.Toplevel(self.window)
+        msg = tkinter.Label(
+            window2, text=f"Congratulations Player {self.state_player.get()},"
+                          f" you've won !!!")
+        msg.pack()
+        ok_btn = tkinter.Button(window2, text="OK",
+                                command=window2.destroy)
         ok_btn.pack()
 
-        pos_x = window_toto2.winfo_screenwidth()
-        pos_y = window_toto2.winfo_screenheight()
-        diff_x = 300
-        diff_y = 50
-        x = (pos_x / 2) - (diff_x / 2)
-        y = (pos_y / 2) - (diff_y / 2)
-        window_toto2.geometry('%dx%d+%d+%d' % (diff_x, diff_y, x, y))
+        set_geometry(window2, 300, 50)
+
+    def new_game(self):
+        """Resets the variables in order to play a new game"""
+        self.nb_remaining = 16
+        self.state_player.set(2)
+        self.row_select.set(-1)
+        for match in self.list_matchstick:
+            match.st()
+
+    def remove(self, x, y):
+        """Allows a match to be deleted depending on several things.
+
+        First of course if the player clicks on a match,
+         secondly if he has not already deleted a match from another row
+         during his turn."""
+        a = [x, y]
+        for match in self.list_matchstick:
+            z = match.pos()
+            if (abs(a[0] - z[0]) < 10 and abs(a[1] - z[1]) < 25) and (
+                    self.row_select.get() == -1
+                    or z[1] == self.row_select.get()):
+                match.ht()
+                self.nb_remaining -= 1
+                self.win()
+                if self.row_select.get() == -1:
+                    self.row_select.set(int(z[1]))
 
 
-# Fonction qui réinitialise les variables afin de pouvoir faire une nouvelle partie
-def new_part():
-    global state, state_player, line_select, list_matchstick
-    state = 16
-    state_player.set(2)
-    line_select.set(-1)
-    for match in list_matchstick:
-        match.st()
-
-
-# Création d'une fenêtre TK pour pouvoir y placer les boutons radio, ainsi que le bouton recommencer
-
-window_toto = Tk()
-window_toto.title("Matchstick")
-
-posx = window_toto.winfo_screenwidth()
-posy = window_toto.winfo_screenheight()
-# Dimension de la fenêtre 800x600
-diffx = 800
-diffy = 600
-x0 = (posx / 2) - (diffx / 2)
-y0 = (posy / 2) - (diffy / 2)
-window_toto.geometry('%dx%d+%d+%d' % (diffx, diffy, x0, y0))
-
-canvas1 = Canvas(window_toto, width=800, height=600)
-canvas1.pack()
-screen1 = TurtleScreen(canvas1)
-state_player = IntVar()
-line_select = IntVar()
-
-# Création des 16 curseurs qui auront l'image d'une allumette
-# On les place dans une liste afin de faciliter leur gestion (leur assigner l'image de l'allumette,
-# les placer au bon endroit etc
-list_matchstick = [RawTurtle(screen1) for _ in range(16)]
-
-screen1.register_shape("Allumettes/allumettes.gif")
-screen1.bgpic("Allumettes/alu2.gif")
-
-for i in list_matchstick:
-    i.shape("Allumettes/allumettes.gif")
-
-# Cette liste contient les positions de chaque allumette, afin qu'elles représentent un triangle
-triangle_toto = [[0, 210], [-30, 140], [0, 140], [30, 140], [-60, 70], [-30, 70], [0, 70], [30, 70],
-                 [60, 70], [-90, 0], [-60, 0], [-30, 0], [0, 0], [30, 0], [60, 0], [90, 0]]
-
-# On place les allumettes correctement
-for index, value in enumerate(triangle_toto):
-    list_matchstick[index].up()
-    list_matchstick[index].goto(value)
-    list_matchstick[index].down()
-
-new_part()
-
-for i in list_matchstick:
-    i.onclick(efface, btn=1)
-
-# Création des 2 boutons radio pour changer de joueur et du bouton recommencer
-player_1 = Radiobutton(text="Joueur 1", variable=state_player, value=2,
-                       command=lambda: [line_select.set(-1)])
-player_2 = Radiobutton(text="Joueur 2", variable=state_player, value=1,
-                       command=lambda: [line_select.set(-1)])
-reco = Button(text="Nouvelle Partie", command=new_part)
-
-# On les place correctement
-player_1.place(x=150, y=100)
-player_2.place(x=150, y=150)
-reco.place(x=150, y=200)
-
-window_toto.mainloop()
+if __name__ == "__main__":
+    NimGame().mainloop()
