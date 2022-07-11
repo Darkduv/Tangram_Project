@@ -20,13 +20,13 @@ def distance(p1: tuple[Any, Any], p2: tuple[Any, Any]) -> float:
     return dist
 
 
-def window_geometry(fen_: Union[tkinter.Tk, tkinter.Toplevel], diff_x_,
-                    diff_y_):
+def window_geometry(fen_: Union[tkinter.Tk, tkinter.Toplevel], width: int,
+                    height: int):
     """Set geometry of the window _fen"""
     pos_x_, pos_y_ = fen_.winfo_screenwidth(), fen_.winfo_screenheight()
-    x_ = int((pos_x_ / 2) - (diff_x_ / 2))
-    y_ = int((pos_y_ / 2) - (diff_y_ / 2))
-    fen_.geometry(f'{diff_x_}x{diff_y_}+{x_}+{y_}')
+    x_ = int((pos_x_ / 2) - (width / 2))
+    y_ = int((pos_y_ / 2) - (height / 2))
+    fen_.geometry(f'{width}x{height}+{x_}+{y_}')
 
 
 def end_tangram_level():
@@ -440,8 +440,8 @@ def tangram():
     p.ht()
     p.up()
 
-    # pour créer les curseurs on enregistre une forme que l'on dessine avec le curseur p
-    # puis on l'enregistre en tant que shape pour notre écran turtle
+    # pour créer les curseurs on enregistre une forme que l'on dessine avec le
+    # curseur p puis on l'enregistre en tant que shape pour notre écran turtle
     def register_shape_init(dessine_forme, l_name_shape, tortue=p,
                             turtle_screen=s1):
         """Enregistre le polygone formé par dessine_forme"""
@@ -580,7 +580,8 @@ image6 = tkinter.PhotoImage(file=f"HT/{res}/end.gif")
 image7 = tkinter.PhotoImage(file=f"HT/{res}/reco.gif")
 image8 = tkinter.PhotoImage(file=f"HT/{res}/quitter_end.gif")
 
-# configuration de la taille des fenêtres principales et de la fenêtre de fin de jeu
+# configuration de la taille des fenêtres principales
+# et de la fenêtre de fin de jeu
 config_res = {
     "1000x700": {
         "T_fen": 1000, "T_fen2": 700, "T_fen_end": 300, "T_fen_end2": 210,
