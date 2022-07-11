@@ -3,12 +3,9 @@
 
 """Game of Nim with matches"""
 
+import os
 import turtle
 import tkinter
-
-PATH = ""  # "Allumettes/"
-MATCH_SYMBOL = "match_symbol.gif"
-BG_IMG = "lighted_match.gif"  # background img
 
 
 def set_geometry(window, width: int, height: int) -> None:
@@ -23,18 +20,20 @@ def set_geometry(window, width: int, height: int) -> None:
 class NimGame:
     """Game of Nim"""
 
+    MATCH_SYMBOL = "match_symbol.gif"
+    BG_IMG = "lighted_match.gif"  # background img
+
     def __init__(self):
         self.window = tkinter.Tk()
         self.window.title("Matches: Game of Nim")
-
         set_geometry(self.window, 800, 600)
 
-        canvas1 = tkinter.Canvas(self.window, width=800, height=600)
-        canvas1.pack()
-        screen1 = turtle.TurtleScreen(canvas1)
+        self.canvas1 = tkinter.Canvas(self.window, width=800, height=600)
+        self.canvas1.pack()
 
-        screen1.register_shape(PATH + MATCH_SYMBOL)
-        screen1.bgpic(PATH + BG_IMG)
+        screen1 = turtle.TurtleScreen(self.canvas1)
+        screen1.register_shape(self.file_path(self.MATCH_SYMBOL))
+        screen1.bgpic(self.file_path(self.BG_IMG))
 
         # The `nb_remaining` attribute represents the number of matches left
         #  in play, when it is 0, the second last player is the winner."""
@@ -45,8 +44,8 @@ class NimGame:
         #  (assigning them the image of the match,
         #  placing them in the right place, etc.)
         self.list_matchstick = [turtle.RawTurtle(screen1) for _ in range(16)]
-        for i in self.list_matchstick:
-            i.shape(PATH + MATCH_SYMBOL)
+        for match in self.list_matchstick:
+            match.shape(self.file_path(self.MATCH_SYMBOL))
 
         self.state_player = tkinter.IntVar()
         self.row_select = tkinter.IntVar()
@@ -55,8 +54,8 @@ class NimGame:
 
         self.new_game()
 
-        for i in self.list_matchstick:
-            i.onclick(self.remove, btn=1)
+        # TODO : find a way to really bind the 'stick' turtles to onclick
+        screen1.onclick(self.remove)
 
         # Création des 2 boutons radio pour changer de joueur
         # et du bouton recommencer
@@ -72,6 +71,11 @@ class NimGame:
         player_1.place(x=150, y=100)
         player_2.place(x=150, y=150)
         restart.place(x=150, y=200)
+
+    @staticmethod
+    def file_path(file: str):
+        folder = os.path.dirname(__file__)
+        return f"{folder}/{file}"
 
     def init_place_matches(self) -> None:
         # the list contains the positions of each match,
@@ -118,16 +122,20 @@ class NimGame:
          secondly if he has not already deleted a match from another row
          during his turn."""
         a = [x, y]
+        # search the corresponding match
         for match in self.list_matchstick:
             z = match.pos()
-            if (abs(a[0] - z[0]) < 10 and abs(a[1] - z[1]) < 25) and (
-                    self.row_select.get() == -1
-                    or z[1] == self.row_select.get()):
-                match.ht()
-                self.nb_remaining -= 1
-                self.win()
-                if self.row_select.get() == -1:
-                    self.row_select.set(int(z[1]))
+            if (abs(a[0] - z[0]) >= 10 or abs(
+                    a[1] - z[1]) >= 25):
+                continue
+            if self.row_select.get() != -1 and z[1] != self.row_select.get():
+                continue
+            match.ht()
+            self.nb_remaining -= 1
+            self.win()
+            if self.row_select.get() == -1:
+                self.row_select.set(int(z[1]))
+            return  # match found, no further search"""
 
 
 if __name__ == "__main__":
