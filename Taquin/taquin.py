@@ -141,11 +141,11 @@ class PuzzleGame:
         ("13", "13.gif"), ("14", "14.gif"), ("15", "15.gif")])
     _shape = (4, 4)
     _tile_size = 200
-    _done_puzzle_file = "Taquin.gif"
+    _done_puzzle_file = "img/Taquin.gif"
     _shuffle = 1000  # 1000
 
     def __init__(self, path: str = ""):
-        names_and_files = {name: path + self._names_and_files[name]
+        names_and_files = {name: f"{path}img/{self._names_and_files[name]}"
                            for name in self._names_and_files}
 
         self.main_window = tkinter.Tk()
