@@ -1,7 +1,9 @@
-"""Tangram Game. See Readme.md for more"""
-
 # ! /usr/bin/python
 # -*- coding: utf-8 -*-
+
+"""Tangram Game. See Readme.md for more"""
+
+
 import turtle
 import tkinter
 from random import randrange
@@ -11,7 +13,8 @@ import pickle
 # Fonctions
 from math import sqrt
 
-from typing import Union, Any
+from typing import Union, Any, Optional
+from dataclasses import dataclass
 
 
 def distance(p1: tuple[Any, Any], p2: tuple[Any, Any]) -> float:
@@ -20,161 +23,30 @@ def distance(p1: tuple[Any, Any], p2: tuple[Any, Any]) -> float:
     return dist
 
 
-def window_geometry(fen_: Union[tkinter.Tk, tkinter.Toplevel], width: int,
-                    height: int):
+def window_geometry(window: Union[tkinter.Tk, tkinter.Toplevel], width: int,
+                    height: int) -> None:
     """Set geometry of the window _fen"""
-    pos_x_, pos_y_ = fen_.winfo_screenwidth(), fen_.winfo_screenheight()
+    pos_x_, pos_y_ = window.winfo_screenwidth(), window.winfo_screenheight()
     x_ = int((pos_x_ / 2) - (width / 2))
     y_ = int((pos_y_ / 2) - (height / 2))
-    fen_.geometry(f'{width}x{height}+{x_}+{y_}')
+    window.geometry(f'{width}x{height}+{x_}+{y_}')
 
 
-def end_tangram_level():
-    fen3 = tkinter.Toplevel()  # Initialisation d'une fenêtre
-    # qui a un fond que l'on affiche grâce à un label
-    fen3.title("Bravo !")
-    fond = tkinter.Label(fen3, image=image6)  # le fond est ici une image
-
-    # Creation of a restart and quit button.
-    # (the 'quit' one quit everything)
-    res = tkinter.Button(fond, image=image7,
-                         command=lambda: [restart(), fen3.destroy()])
-    by = tkinter.Button(fond, image=image8, command=fen.quit)
-
-    fond.pack()
-    # affichage et centrage de la fenêtre.
-    res.place(x=config_res[res]["xres"], y=config_res[res]["yres"])
-    by.place(x=config_res[res]["xby"], y=config_res[res]["yby"])
-    window_geometry(fen3, config_res[res]["T_fen_end"],
-                    config_res[res]["T_fen_end2"])
-
-
-def check_end() -> bool:
-    """Cette fonction détecte si le niveau est terminé ou non"""
-    dist_lim = 5
-    # if a piece is in position with dist < dist_lim, we place it automatically
-    for i, pt in enumerate(tabl_end):
-
-        # Firstly: checks the positions
-        # the two big triangles
-        if i in [0, 1]:
-            if distance(tabl[i], pt) > dist_lim \
-                    and distance(tabl[1 - i], pt) > dist_lim:
-                return False
-            d1 = distance(tabl[0], pt)
-            d2 = distance(tabl[1], pt)
-            if d1 < d2:
-                dict_piece['tri1'].goto(tabl_end[i])
-            elif d1 - d2 < 5:
-                dict_piece['tri1'].goto(tabl_end[i])
-                dict_piece['tri2'].goto(tabl_end[i])
-            else:
-                dict_piece['tri2'].goto(tabl_end[i])
-
-        # the two small triangles
-        if i in [3, 4]:
-            if distance(tabl[i], pt) > dist_lim \
-                    and distance(tabl[7 - i], pt) > dist_lim:
-                return False
-            d1 = distance(tabl[3], pt)
-            d2 = distance(tabl[4], pt)
-            if d1 < d2:
-                dict_piece['tripe1'].goto(tabl_end[i])
-            elif d1 - d2 < 5:
-                dict_piece['tripe1'].goto(tabl_end[i])
-                dict_piece['tripe2'].goto(tabl_end[i])
-            else:
-                dict_piece['tripe2'].goto(tabl_end[i])
-
-        # These first 4 tests were more complex, because we don't know
-        # which triangle the player will use (2 places for each triangle)
-
-        # the middle triangle, the square, the parallelogram
-        if i in [2, 5, 6]:
-            if distance(tabl[i], pt) > dist_lim:
-                return False
-            dict_piece[name_pieces[i]].goto(pt)
-
-    # second test: check if the rotation is the right one.
-    for i, cpt in enumerate(comp):
-        if i in [0, 1]:
-            if cpt not in [comp_end[0], comp_end[1]]:
-                return False
-        elif i in [3, 4]:
-            if cpt not in [comp_end[3], comp_end[4]]:
-                return False
-        elif i in [2, 5, 6]:
-            if cpt != comp_end[i]:
-                return False
-
-    # Last test checking if the parallelogram must be reversed or not.
-    if reverse != reverse_end:
-        return False
-
-    s1.update()
-
-    end_tangram_level()
-    return True
-
-
-def restart():
-    """Restarts the current level"""
-
-    global comp, tabl, reverse, helped
-    # récupération des variables à modifier en tant que variable globale
-
-    # modification (or creation) of the current table of position and rotation
-    #  and of the boolean variable storing if the parallelogram is reversed.
-    tabl = list(CARRE[0])
-    comp = list(CARRE[1])
-    reverse = CARRE[2]
-    # the variable `helped` is reset to 2 (see function `see()`)
-    helped = 2
-    # call of the function init for the changes to take effect.
-    init()
-
-
-def init():
-    """Initialise the elements with their positions and rotations.
-
-    These are stored in the list `comp` et `tabl`"""
-
-    for i, name in enumerate(name_pieces):
-        dict_piece[name].up()
-
-        dict_piece[name].shape(name if name != 'para' else 'para1')
-
-        dict_piece[name].seth(comp[i] * 15)
-        dict_piece[name].goto(tabl[i])
-    color_init()
-
-
-def color_init():
-    """Update the color of the elements of the tangram.
-
-    (allows the player to customise the game)"""
-    for i, name in enumerate(name_pieces):
-        dict_piece[name].color(l_color[i].get())
-
-    s1.update()
-
-
-def sav_color():
+def sav_color(l_color) -> None:
     """Retrieves and saves in a file the colors chosen by the player"""
-    global l_color
     with open("sav_color.txt", "wb") as sauvegarde_couleur:
         sav = pickle.Pickler(sauvegarde_couleur)
         for col in l_color:
             sav.dump(col.get())
 
 
-def sav_res(res):
+def sav_resolution(resolution: str) -> None:
     """Change la résolution par défaut par celle sélectionnée par le joueur
      et la place dans le fichier qui est lu au démarrage du jeu
       pour initialiser les fenêtres"""
     with open("sav_res.txt", "wb") as saved_resolution_file:
         sav = pickle.Pickler(saved_resolution_file)
-        sav.dump(res)
+        sav.dump(resolution)
 
     # création et centrage d'une fenêtre demandant au joueur de redémarrer
     #  l'application pour que les changements prennent effet
@@ -190,103 +62,331 @@ def sav_res(res):
     window_geometry(advise, 500, 50)
 
 
-def rotation_i(i_):
-    """Fonction de rotation pour dict_piece[name_pieces[i_]]"""
-
-    def aux(xx, yy):
-        del xx, yy
-        comp[i_] += 1
-        comp[i_] %= l_seuil_rotation[i_]
-        dict_piece[name_pieces[i_]].seth(comp[i_] * 15)
-        s1.update()
-
-    return aux
+name_pieces = ['tri1', 'tri2', 'tri_moy', 'tripe1', 'tripe2', 'carre', 'para']
+l_seuil_rotation = [24, 24, 24, 24, 24, 6, 12]
+d_seuil_rotation = {'tri1': 24, 'tri2': 24, 'tri_moy': 24, 'tripe1': 24,
+                    'tripe2': 24, 'carre': 24, 'para': 24}
 
 
-# Les 6 fonctions rotations sont nécessaires, car on ne peut pas récupérer
-# l'objet curseur actif au moment du clic. De plus, une fonction lambda ne peut
-# pas recevoir d'argument ce qui rend son utilisation avec onclick impossible.
-# Ces dernières mettent aussi à jour la table des rotations (comp)
+class Piece(turtle.RawTurtle):
+    """Piece of tangram"""
+
+    def __init__(self, name: str, screen: turtle.Screen, modulo_rot: int):
+        super().__init__(screen)
+        self.name = name
+        self.screen = screen
+        self.rot = 0
+        self.modulo_rot = modulo_rot
+        # self.onclick(lambda x, y: print(self.name))
+        self.onclick(self.rotation, btn=3)
+        self.onclick(lambda x, y: print(self.name), btn=1)
+
+        self.ondrag(self.goto)
+
+    def rotation(self, *_) -> None:
+        self.rot += 1
+        self.rot %= self.modulo_rot
+        self.seth(self.rot * 15)
+        self.screen.update()
+
+# FIXME : changer la structure, on veut stocker la liste des configurations
+#  des pièces: position et rotation doivent être liés ensemble, pièce par pièce
+
+# Fixme bis: stockage des pièces ? liste/dict[nom] ?
 
 
-def reverse_para(_):
-    """Récupère la forme de l'objet C_para et lui assigne sa forme symétrique"""
-    global reverse
+@dataclass
+class TangramShape:
+    """Describes a tangram shape : positions of the pieces, rotation, etc."""
 
-    forme = dict_piece['para'].shape()
-    if forme == "para1":
-        reverse = True
-        dict_piece['para'].shape("para2")
-    if forme == "para2":
-        reverse = False
-        dict_piece['para'].shape("para1")
-    s1.update()
+    name: str
+    positions: list[tuple[float, float]]
+    rotations: list[int]
+    para_flipped: bool
+    img_file: Optional[str]
 
 
-def where(_):
-    """Cette fonction met à jour la table des positions (tabl)"""
-    for i, name in enumerate(name_pieces):
-        tabl[i] = dict_piece[name].position()
+class Tangram:
+    """Tangram main window/game"""
 
-    check_end()
-    # lance la fonction détection pour voir si le tangram est terminé
+    # Création des premières variables : les couleurs, les couleurs par défaut
 
+    _color_default = ("brown", "purple", "pink", "yellow",
+                      "blue", "red", "green")
 
-def apply_level(lvl):
-    """Configures the game to display the level chosen by the user"""
-    global tabl_end, comp_end, reverse_end
+    _liste_init_color = [["Rouge", "red"], ["Bleu", "blue"],
+                         ["Vert", "green"], ["Jaune", "yellow"],
+                         ["Rose", "pink"], ["Violet", "purple"],
+                         ["Noir", "black"], ["Blanc", "white"],
+                         ["Orange", "orange"], ["Bleu Ciel", "skyblue"],
+                         ["Or", "gold"], ["Marron", "brown"]]
 
-    tabl_end = lvl[0]
-    comp_end = lvl[1]
-    reverse_end = lvl[2]
-    bgc = lvl[3]
-    s1.bgpic(bgc)
-    # mise de tabl_end comp_end et reverse_end qui sont utilisées dans detection
-    # et mise à jour du fond d'écran
+    def __init__(self):
+        """Main class for the tangram game"""
 
-    restart()
+        self.hints = 2
+        self.flipped = False
 
+        # Initialisation de la résolution
+        # lecture dans sav_res.txt de la résolution du programme
+        # (par défaut 1000x700)
+        with open("sav_res.txt", "rb") as saved_resolution_:
+            res_val_ = pickle.Unpickler(saved_resolution_)
+            self.res = res_val_.load()
 
-def see():
-    """Allows the player to get help if the player requests it"""
-    global helped
+        fen2 = tkinter.Toplevel()
+        # Création d'une nouvelle fenêtre
+        cv1 = tkinter.Canvas(fen2, width=CONFIG_RES[self.res]["window"][0],
+                             height=CONFIG_RES[self.res]["window"][1])
+        self.s1 = turtle.TurtleScreen(cv1)
+        # Création d'un canvas Tkinter dans lequel on crée un écran turtle
 
-    helped -= 1
-    # on décrémente helped (appelé en global) car l'aide est limitée par jeu
+        self.dict_piece = {name: Piece(name, self.s1, d_seuil_rotation[name])
+                           for name in name_pieces}
+        # création des curseurs qui seront les éléments du Tangram
 
-    if helped >= 0:
-        # si le joueur a droit à un peu d'aide, on l'aide
-        curseur = [dict_piece[name] for name in name_pieces]
-        fond = s1.bgpic()
-        # récupération du fond d'écran (permet de savoir à quel niveau on est)
-        cpt = len(curseur)
-        j = randrange(0, cpt)
-        # on tire un curseur au hasard
-        dict_level = {"HT/1000x700/canard.gif": CANARD,
-                      "HT/500x350/canard.gif": CANARD,
-                      "HT/1000x700/lapin.gif": LAPIN,
-                      "HT/500x350/lapin.gif": LAPIN,
-                      "HT/1000x700/prosterne.gif": PROSTERNE,
-                      "HT/500x350/prosterne.gif": PROSTERNE,
-                      "HT/1000x700/figure.gif": FIGURE,
-                      "HT/500x350/figure.gif": FIGURE}
-        level_tout = dict_level[fond]
-        curseur[j].goto(level_tout[0][j])
-        curseur[j].seth(level_tout[1][j] * 15)
-        tabl[j] = level_tout[0][j]
-        comp[j] = level_tout[1][j]
-        if reverse != level_tout[3] \
-                and (
-                curseur[j].shape() == "para1" or curseur[j].shape() == "para2"):
-            reverse_para(False)
-        # for the current level, we put the randomly drawn cursor in its place,
-        # rotate it correctly and update the table of positions and rotations.
-        # If the cursor drawn is dict_piece['para'], we also check whether it
-        # should be returned, and we run the reverse_para function
-        # which updates reverse
-    else:
-        # If the player has used the help too many times, he/she is told in a
-        # window that he/she can no longer use this function for the time being.
+        # affichage du canvas(et donc de l'écran turtle)
+        cv1.pack()
+        # création des objets qui contiendront les couleurs des curseurs,
+        # On utilise ici des objets pour permettre la mise à jour simple
+        # des couleurs grâce à des boutons radio
+        self.l_color = self.load_color()
+
+        # We will now create the menu that is located at
+        # the top of the game window
+        menu1 = tkinter.Menu(fen2)
+
+        fichier = tkinter.Menu(menu1, tearoff=0)
+        menu1.add_cascade(label="Fichier", menu=fichier)
+        fichier.add_command(label="Recommencer", command=self.restart)
+        # la commande Fichier/recommencer permet au joueur
+        # de remettre son niveau
+        # à 0 grâce à la fonction restart
+        options = tkinter.Menu(fichier, tearoff=0)
+        fichier.add_cascade(label="Options", menu=options)
+        color = tkinter.Menu(options, tearoff=1)
+        options.add_cascade(label="Couleur", menu=color)
+        list_menus = [tkinter.Menu(options, tearoff=0) for _ in range(7)]
+        # ici nous allons définir un menu pour chaque élément du tangram qui
+        # permettra au joueur de personnaliser les couleurs de son jeu qui sont
+        # automatiquement mises à jour grâce à la fonction color_init()
+
+        liste_init = [["Triangle 1", list_menus[0], self.l_color[0]],
+                      ["Triangle 2", list_menus[1], self.l_color[1]],
+                      ["Triangle Moyen", list_menus[2], self.l_color[2]],
+                      ["Petit Triangle 1", list_menus[3], self.l_color[3]],
+                      ["Petit Triangle 2", list_menus[4], self.l_color[4]],
+                      ["Carre", list_menus[5], self.l_color[5]],
+                      ["Parallélogramme", list_menus[6], self.l_color[6]]]
+
+        for i_label, i_menu, i_color in liste_init:
+            color.add_cascade(label=i_label, menu=i_menu)
+            for j_label, j_val in self._liste_init_color:
+                i_menu.add_radiobutton(label=j_label, value=j_val,
+                                       variable=i_color,
+                                       command=self.color_init)
+
+        color.add_separator()
+
+        color.add_command(label="Défaut", command=self.apply_color_default)
+        # permet au joueur de remettre les couleurs par défaut du jeu
+        color.add_separator()
+        color.add_command(label="Sauvegarder", command=sav_color)
+        # sauvegarde la configuration des couleurs grâce à la fonction
+        resolution = tkinter.Menu(options, tearoff=0)
+        options.add_cascade(label="Résolution", menu=resolution)
+        resolution.add_command(label="1000x700",
+                               command=lambda: sav_resolution("1000x700"))
+        resolution.add_command(label="500x350",
+                               command=lambda: sav_resolution("500x350"))
+        # permet de modifier la résolution courante
+        fichier.add_command(label="Quitter", command=fen.quit)
+        # permet au joueur de quitter complètement le programme
+
+        niveaux = tkinter.Menu(menu1, tearoff=0)
+        menu1.add_cascade(label="Niveau", menu=niveaux)
+
+        dict_levels = {"Canard": CANARD, "Lapin": LAPIN,
+                       "Homme prosterné": PROSTERNE, "Homme rigolant": FIGURE}
+
+        def create_command(lvl_shape: TangramShape):
+            def command():
+                self.apply_level(lvl_shape)
+            return command
+
+        for label, shape in dict_levels.items():
+            niveaux.add_command(label=label, command=create_command(shape))
+        # permet de choisir le niveau
+
+        aide = tkinter.Menu(menu1, tearoff=0)
+        menu1.add_cascade(label="Aide", menu=aide)
+
+        aide.add_command(label=f"Coups de pouce : {self.hints} par partie",
+                         command=self.hint)
+        # lance la fonction hint pour placer un des éléments du Tangram
+        aide.add_command(label="Comment Jouer ?",
+                         command=lambda: os.system("gedit comment_jouer.txt"))
+        # affiche dans gedit le fichier comment_jouer.txt
+
+        bonus = tkinter.Menu(menu1, tearoff=0)
+        menu1.add_cascade(label="Bonus", menu=bonus)
+        bonus.add_command(label="Taquin",
+                          command=lambda: os.system("python Taquin/taquin.py"))
+        bonus.add_command(label="Allumettes",
+                          command=lambda: os.system(
+                              "python Allumettes/allumettes.py"))
+        # permet de lancer les scripts contenant les jeux bonus :
+        # le jeu d'Allumette et le Taquin
+
+        fen2.config(menu=menu1)
+        # affectation du menu à notre fenêtre de jeu
+
+        window_geometry(fen2, *CONFIG_RES[self.res]["window"])
+        # centrage de la fenêtre de jeu
+
+        self.s1.tracer(8, 25)
+        # configure la vitesse de tracé du curseur p
+        # de façon à ce que l'on ne remarque pas l'initialisation des curseurs
+
+        def tri_pe(demi_hyp):
+            def aux(tortue):
+                tortue.fd(demi_hyp)
+                tortue.right(135)
+                tortue.fd(demi_hyp * sqrt(2))
+                tortue.right(90)
+                tortue.fd(demi_hyp * sqrt(2))
+                tortue.seth(0)
+                tortue.fd(demi_hyp)
+                tortue.end_poly()
+
+            return aux
+
+        def tri_moy_(tortue):
+            cote_ = CONFIG_RES[self.res]["cote"]
+            tortue.left(45)
+            tortue.fd(sqrt((cote_ / 2) ** 2 + (cote_ / 2) ** 2) / 2)
+            tortue.right(135)
+            tortue.fd(cote_ / 2)
+            tortue.right(90)
+            tortue.fd(cote_ / 2)
+            tortue.goto(0, 0)
+
+        self.register_shape_init(tri_pe(CONFIG_RES[self.res]["cote"] / 2),
+                                 ['tri1', 'tri2'])
+        self.register_shape_init(tri_pe(CONFIG_RES[self.res]["cote"] / 4),
+                                 ['tripe1', 'tripe2'])
+
+        def parallelo_both(reverse_: bool = False):
+            cote_ = CONFIG_RES[self.res]["cote"]
+
+            def parallelo(tortue):
+                dist = sqrt(2) * cote_ / 4
+                tortue.left(-90 if reverse_ else 90)
+                tortue.fd(dist / 2)
+                tortue.right(-90 if reverse_ else 90)
+                tortue.fd(cote_ / 8)
+                tortue.right(90)
+                tortue.fd(cote_ / 4)
+                tortue.seth(135 if reverse_ else 225)
+                tortue.fd(dist)
+                tortue.seth(90)
+                tortue.fd(cote_ / 2)
+                tortue.seth(315 if reverse_ else 45)
+                tortue.fd(dist)
+                tortue.seth(0 if reverse_ else 270)
+                if reverse_:
+                    tortue.right(90)
+                tortue.fd(cote_ / 4)
+                tortue.right(90)
+                tortue.fd(cote_ / 8)
+                tortue.goto(0, 0)
+                if not reverse_:
+                    tortue.seth(0)
+
+            return parallelo
+
+        self.register_shape_init(parallelo_both(), ['para1'])
+        self.register_shape_init(parallelo_both(reverse_=True), ['para2'])
+
+        def carre_(tortue):
+            cote_ = CONFIG_RES[self.res]["cote"]
+            demi_size = sqrt((cote_ / 2) ** 2 + (cote_ / 2) ** 2) / 4
+            tortue.left(90)
+
+            for trace in range(6):
+                tortue.fd(demi_size if trace in [0, 1, 5] else demi_size * 2)
+                tortue.right(90)
+
+            tortue.fd(demi_size)
+            tortue.seth(0)
+
+        self.register_shape_init(carre_, ['carre'])
+        self.register_shape_init(tri_moy_, ['tri_moy'])
+
+        # Corps
+        self.lvl = CANARD
+        self.apply_level(CANARD)
+
+        cv1.bind("<ButtonRelease-1>", self.check_end)
+        cv1.bind("<Double-Button-1>", self.flip_para)
+
+        # et pour permettre au joueur de faire le symétrique du parallélogramme
+
+        self.s1.listen()
+        # il ne reste plus qu'à attendre un évènement
+
+    @staticmethod
+    def load_color() -> list[tkinter.StringVar]:
+        l_color = []
+        for i in range(7):
+            l_color.append(tkinter.StringVar())
+        with open("sav_color.txt", "rb") as saved_colors:
+            color_val = pickle.Unpickler(saved_colors)
+            for i in range(7):
+                # read the colors saved by the player in the file sav_color.txt
+                color = color_val.load()
+                # assigning strings containing color names
+                l_color[i].set(color)
+        return l_color
+
+    def hint(self) -> None:
+        """Allows the player to get help if the player requests it"""
+
+        if self.hints >= 1:
+            # si le joueur a droit à un peu d'aide, on l'aide
+            curseur = [self.dict_piece[name] for name in name_pieces]
+
+            cpt = len(curseur)
+            j = randrange(0, cpt)
+            # on tire un curseur au hasard
+
+            figure = self.lvl
+            curseur[j].goto(figure.positions[j])
+            curseur[j].seth(figure.rotations[j] * 15)
+
+            if self.flipped != figure.para_flipped \
+                    and (
+                    curseur[j].shape() == "para1"
+                    or curseur[j].shape() == "para2"):
+                self.flip_para()
+            # for the current level, we put the randomly drawn cursor
+            # in its place, rotate it correctly and update the table
+            # of positions and rotations. If the cursor drawn is
+            # dict_piece['para'], we also check whether it should be returned,
+            # and we run the flip_para function which updates reverse
+
+            self.hints -= 1
+            # on décrémente helped car l'aide est limitée par jeu
+        else:
+            # If the player has used the help too many times, he/she is told
+            # in a window that he/she can no longer use this function
+            # for the time being.
+            self.no_more_hint()
+
+        self.s1.update()
+
+    @staticmethod
+    def no_more_hint() -> None:
         fen4 = tkinter.Toplevel()
         attention = tkinter.Label(
             fen4, text="Attention vous avez utilisé l'aide trop de fois ! ")
@@ -296,279 +396,186 @@ def see():
 
         window_geometry(fen4, 300, 50)
 
-    s1.update()
+    def restart(self) -> None:
+        """Restarts the current level"""
 
+        # récupération des variables à modifier en tant que variable globale
 
-name_pieces = ['tri1', 'tri2', 'trimoy', 'tripe1', 'tripe2', 'carre', 'para']
-l_seuil_rotation = [24, 24, 24, 24, 24, 6, 12]
+        init_figure = CARRE
+        self.flipped = init_figure.para_flipped
+        # the variable `helped` is reset to 2 (see function `hint()`)
+        self.hints = 2
+        # call of the function init for the changes to take effect.
 
+        for i, name in enumerate(name_pieces):
+            self.dict_piece[name].up()
 
-def tangram():
-    """Cette fonction est le cœur du programme elle gère le tangram même"""
-    # Init
-    global s1, helped, dict_piece, l_color
+            self.dict_piece[name].shape(name if name != 'para' else 'para1')
 
-    fen2 = tkinter.Toplevel()
-    # Création d'une nouvelle fenêtre
-    cv1 = tkinter.Canvas(fen2, width=config_res[res]["T_fen"],
-                         height=config_res[res]["T_fen2"])
-    s1 = turtle.TurtleScreen(cv1)
-    p = turtle.RawTurtle(s1)
-    # Création d'un canvas Tkinter dans lequel on crée un écran turtle
-    # et un premier curseur nommé p
-    dict_piece = {name: turtle.RawTurtle(s1) for name in name_pieces}
-    # création des curseurs qui seront les éléments du Tangram
+            self.dict_piece[name].seth(init_figure.rotations[i] * 15)
+            self.dict_piece[name].rot = init_figure.rotations[i]
+            self.dict_piece[name].goto(init_figure.positions[i])
 
-    # affichage du canvas(et donc de l'écran turtle)
-    cv1.pack()
-    # création des objets qui contiendront les couleurs des curseurs,
-    # On utilise ici des objets pour permettre la mise à jour simple
-    # des couleurs grâce à des boutons radio
-    l_color = []
-    for i in range(7):
-        l_color.append(tkinter.StringVar())
+        # self.s1.update()
+        self.color_init()
 
-    with open("sav_color.txt", "rb") as sauvegarde_couleur:
-        color_val = pickle.Unpickler(sauvegarde_couleur)
-        for i in range(7):
-            # read the colors saved by the player in the file sav_color.txt
-            color_set[i] = color_val.load()
-            # assigning strings containing colour names
-            # to objects created earlier
-            l_color[i].set(color_set[i])
+    def color_init(self) -> None:
+        """Update the color of the elements of the tangram.
 
-    # We will now create the menu that is located at the top of the game window
-    menu1 = tkinter.Menu(fen2)
+        (allows the player to customise the game)"""
+        for i, name in enumerate(name_pieces):
+            self.dict_piece[name].color(self.l_color[i].get())
 
-    fichier = tkinter.Menu(menu1, tearoff=0)
-    menu1.add_cascade(label="Fichier", menu=fichier)
-    fichier.add_command(label="Recommencer", command=restart)
-    # la commande Fichier/recommencer permet au joueur de remettre son niveau
-    # à 0 grâce à la fonction restart
-    options = tkinter.Menu(fichier, tearoff=0)
-    fichier.add_cascade(label="Options", menu=options)
-    color = tkinter.Menu(options, tearoff=1)
-    options.add_cascade(label="Couleur", menu=color)
-    list_menus = [tkinter.Menu(options, tearoff=0) for _ in range(7)]
-    # ici nous allons définir un menu pour chaque élément du tangram qui
-    # permettra au joueur de personnaliser les couleurs de son jeu qui sont
-    # automatiquement mises à jour grâce à la fonction color_init()
+        self.s1.update()
 
-    liste_init = [["Triangle 1", list_menus[0], l_color[0]],
-                  ["Triangle 2", list_menus[1], l_color[1]],
-                  ["Triangle Moyen", list_menus[2], l_color[2]],
-                  ["Petit Triangle 1", list_menus[3], l_color[3]],
-                  ["Petit Triangle 2", list_menus[4], l_color[4]],
-                  ["Carre", list_menus[5], l_color[5]],
-                  ["Parallélogramme", list_menus[6], l_color[6]]]
-    liste_init_color = [["Rouge", "red"], ["Bleu", "blue"],
-                        ["Vert", "green"], ["Jaune", "yellow"],
-                        ["Rose", "pink"], ["Violet", "purple"],
-                        ["Noir", "black"], ["Blanc", "white"],
-                        ["Orange", "orange"], ["Bleu Ciel", "skyblue"],
-                        ["Or", "gold"], ["Marron", "brown"]]
+    def apply_color_default(self) -> None:
+        for col, default_col in zip(self.l_color, self._color_default):
+            col.set(default_col)
+        self.color_init()
 
-    for i_label, i_menu, i_color in liste_init:
-        color.add_cascade(label=i_label, menu=i_menu)
-        for j_label, j_val in liste_init_color:
-            i_menu.add_radiobutton(label=j_label, value=j_val, variable=i_color,
-                                   command=color_init)
+    def apply_level(self, lvl: TangramShape) -> None:
+        """Configures the game to display the level chosen by the user"""
+        self.lvl = lvl
 
-    color.add_separator()
+        bgc = lvl.img_file
+        self.s1.bgpic(bgc)
 
-    def apply_color_default():
-        for ii in range(7):
-            l_color[ii].set(color_default[ii])
-        color_init()
+        self.restart()
 
-    color.add_command(label="Défaut", command=apply_color_default)
-    # permet au joueur de remettre les couleurs par défaut du jeu
-    color.add_separator()
-    color.add_command(label="Sauvegarder", command=sav_color)
-    # sauvegarde la configuration des couleurs grâce à la fonction
-    resolution = tkinter.Menu(options, tearoff=0)
-    options.add_cascade(label="Résolution", menu=resolution)
-    resolution.add_command(label="1000x700",
-                           command=lambda: sav_res("1000x700"))
-    resolution.add_command(label="500x350", command=lambda: sav_res("500x350"))
-    # permet de modifier la résolution courante
-    fichier.add_command(label="Quitter", command=fen.quit)
-    # permet au joueur de quitter complètement le programme
+    def end_tangram_level(self) -> None:
+        fen3 = tkinter.Toplevel()  # Initialisation d'une fenêtre
+        # qui a un fond que l'on affiche grâce à un label
+        fen3.title("Bravo !")
+        fond = tkinter.Label(fen3, image=image6)  # le fond est ici une image
 
-    niveaux = tkinter.Menu(menu1, tearoff=0)
-    menu1.add_cascade(label="Niveau", menu=niveaux)
+        # Creation of a restart and quit button.
+        # (the 'quit' one quit everything)
+        restart = tkinter.Button(
+            fond, image=image7,
+            command=lambda: [self.restart(), fen3.destroy()])
+        by = tkinter.Button(fond, image=image8, command=fen.quit)
 
-    dict_levels = {"Canard": lambda: apply_level(CANARD),
-                   "Lapin": lambda: apply_level(LAPIN),
-                   "Homme prosterné": lambda: apply_level(PROSTERNE),
-                   "Homme rigolant": lambda: apply_level(FIGURE)}
-    for label, command in dict_levels.items():
-        niveaux.add_command(label=label, command=command)
-    # permet de choisir le niveau
+        fond.pack()
+        # affichage et centrage de la fenêtre.
+        restart.place(x=CONFIG_RES[self.res]["x_res"],
+                      y=CONFIG_RES[self.res]["y_res"])
+        by.place(x=CONFIG_RES[self.res]["xby"],
+                 y=CONFIG_RES[self.res]["yby"])
+        window_geometry(fen3, *CONFIG_RES[self.res]["end_window"])
 
-    aide = tkinter.Menu(menu1, tearoff=0)
-    menu1.add_cascade(label="Aide", menu=aide)
+    def pos_pieces(self) -> list[tuple[float, float]]:
+        l_pos = []
+        for name in name_pieces:
+            piece = self.dict_piece[name]  # type: Piece
+            l_pos.append(piece.position())
+        return l_pos
 
-    aide.add_command(label="Coups de pouce : 2 par partie", command=see)
-    # lance la fonction see pour placer un des éléments du Tangram
-    aide.add_command(label="Comment Jouer ?",
-                     command=lambda: os.system("gedit comment_jouer.txt"))
-    # affiche dans gedit le fichier comment_jouer.txt
+    def check_end(self, _) -> bool:
+        """Cette fonction détecte si le niveau est terminé ou non"""
+        dist_lim = 5
+        # if a piece is in position with dist < dist_lim,
+        # we place it automatically
+        pos_pieces = self.pos_pieces()
+        for i, pt in enumerate(self.lvl.positions):
 
-    bonus = tkinter.Menu(menu1, tearoff=0)
-    menu1.add_cascade(label="Bonus", menu=bonus)
-    bonus.add_command(label="Taquin",
-                      command=lambda: os.system("python Taquin/taquin.py"))
-    bonus.add_command(label="Allumettes",
-                      command=lambda: os.system(
-                          "python Allumettes/allumettes.py"))
-    # permet de lancer les scripts contenant les jeux bonus :
-    # le jeu d'Allumette et le Taquin
+            # Firstly: checks the positions
+            # the two big triangles
+            if i in [0, 1]:
+                if distance(pos_pieces[i], pt) > dist_lim \
+                        and distance(pos_pieces[1 - i], pt) > dist_lim:
+                    return False
+                d1 = distance(pos_pieces[0], pt)
+                d2 = distance(pos_pieces[1], pt)
+                if d1 < d2:
+                    self.dict_piece['tri1'].goto(self.lvl.positions[i])
+                elif d1 - d2 < 5:
+                    self.dict_piece['tri1'].goto(self.lvl.positions[i])
+                    self.dict_piece['tri2'].goto(self.lvl.positions[i])
+                else:
+                    self.dict_piece['tri2'].goto(self.lvl.positions[i])
 
-    fen2.config(menu=menu1)
-    # affectation du menu à notre fenêtre de jeu
+            # the two small triangles
+            if i in [3, 4]:
+                if distance(pos_pieces[i], pt) > dist_lim \
+                        and distance(pos_pieces[7 - i], pt) > dist_lim:
+                    return False
+                d1 = distance(pos_pieces[3], pt)
+                d2 = distance(pos_pieces[4], pt)
+                if d1 < d2:
+                    self.dict_piece['tripe1'].goto(self.lvl.positions[i])
+                elif d1 - d2 < 5:
+                    self.dict_piece['tripe1'].goto(self.lvl.positions[i])
+                    self.dict_piece['tripe2'].goto(self.lvl.positions[i])
+                else:
+                    self.dict_piece['tripe2'].goto(self.lvl.positions[i])
 
-    window_geometry(fen2, config_res[res]["T_fen"], config_res[res]["T_fen2"])
-    # centrage de la fenêtre de jeu
+            # These first 4 tests were more complex, because we don't know
+            # which triangle the player will use (2 places for each triangle)
 
-    p._tracer(8, 25)
-    # configure la vitesse de tracer du curseur p
-    # de façon à ce que l'on ne remarque pas l'initialisation des curseurs
+            # the middle triangle, the square, the parallelogram
+            if i in [2, 5, 6]:
+                if distance(pos_pieces[i], pt) > dist_lim:
+                    return False
+                self.dict_piece[name_pieces[i]].goto(pt)
 
-    # Création des curseurs
+        # second test: check if the rotation is the right one.
+        for i, name in enumerate(name_pieces):
+            cpt = self.dict_piece[name].rot
+            if i in [0, 1]:
+                if cpt not in [self.lvl.rotations[0], self.lvl.rotations[1]]:
+                    return False
+            elif i in [3, 4]:
+                if cpt not in [self.lvl.rotations[3], self.lvl.rotations[4]]:
+                    return False
+            elif i in [2, 5, 6]:
+                if cpt != self.lvl.rotations[i]:
+                    return False
 
-    p.ht()
-    p.up()
+        # Last test checking if the parallelogram must be reversed or not.
+        if self.flipped != self.lvl.para_flipped:
+            return False
 
-    # pour créer les curseurs on enregistre une forme que l'on dessine avec le
-    # curseur p puis on l'enregistre en tant que shape pour notre écran turtle
-    def register_shape_init(dessine_forme, l_name_shape, tortue=p,
-                            turtle_screen=s1):
+        self.s1.update()
+
+        self.end_tangram_level()
+        return True
+
+    def flip_para(self, *_) -> None:
+        """Récupère la forme de l'objet C_para et lui assigne sa forme
+         symétrique"""
+
+        forme = self.dict_piece['para'].shape()
+        if forme == "para1":
+            self.flipped = True
+            self.dict_piece['para'].shape("para2")
+        if forme == "para2":
+            self.flipped = False
+            self.dict_piece['para'].shape("para1")
+        self.s1.update()
+
+    # pour créer les curseurs on enregistre une forme que l'on
+    # dessine avec le curseur p puis on l'enregistre en tant
+    # que shape pour notre écran turtle
+    def register_shape_init(self, dessine_forme, l_name_shape) -> None:
         """Enregistre le polygone formé par dessine_forme"""
-
-        tortue.begin_poly()
-        dessine_forme(tortue)
-        shape_ = tortue.get_poly()
+        my_turtle = turtle.RawTurtle(self.s1)
+        my_turtle.ht()
+        my_turtle.up()
+        my_turtle.begin_poly()
+        dessine_forme(my_turtle)
+        shape_ = my_turtle.get_poly()
         for name in l_name_shape:
-            turtle_screen.register_shape(name, shape_)
-
-    def tri_pe(demi_hyp):
-        def aux(tortue):
-            tortue.fd(demi_hyp)
-            tortue.right(135)
-            tortue.fd(demi_hyp * sqrt(2))
-            tortue.right(90)
-            tortue.fd(demi_hyp * sqrt(2))
-            tortue.seth(0)
-            tortue.fd(demi_hyp)
-            tortue.end_poly()
-
-        return aux
-
-    def tri_moy_(tortue):
-        cote_ = config_res[res]["cote"]
-        tortue.left(45)
-        tortue.fd(sqrt((cote_ / 2) ** 2 + (cote_ / 2) ** 2) / 2)
-        tortue.right(135)
-        tortue.fd(cote_ / 2)
-        tortue.right(90)
-        tortue.fd(cote_ / 2)
-        tortue.goto(0, 0)
-
-    register_shape_init(tri_pe(config_res[res]["cote"] / 2), ['tri1', 'tri2'])
-    register_shape_init(tri_pe(config_res[res]["cote"] / 4),
-                        ['tripe1', 'tripe2'])
-
-    def parallelo_both(reverse_: bool = False):
-        cote_ = config_res[res]["cote"]
-
-        def parallelo(tortue):
-            dist = sqrt(2) * cote_ / 4
-            tortue.left(-90 if reverse_ else 90)
-            tortue.fd(dist / 2)
-            tortue.right(-90 if reverse_ else 90)
-            tortue.fd(cote_ / 8)
-            tortue.right(90)
-            tortue.fd(cote_ / 4)
-            tortue.seth(135 if reverse_ else 225)
-            tortue.fd(dist)
-            tortue.seth(90)
-            tortue.fd(cote_ / 2)
-            tortue.seth(315 if reverse_ else 45)
-            tortue.fd(dist)
-            tortue.seth(0 if reverse_ else 270)
-            if reverse_:
-                tortue.right(90)
-            tortue.fd(cote_ / 4)
-            tortue.right(90)
-            tortue.fd(cote_ / 8)
-            tortue.goto(0, 0)
-            if not reverse_:
-                tortue.seth(0)
-
-        return parallelo
-
-    register_shape_init(parallelo_both(), ['para1'])
-    register_shape_init(parallelo_both(reverse_=True), ['para2'])
-
-    def carre_(tortue):
-        cote_ = config_res[res]["cote"]
-        demi_size = sqrt((cote_ / 2) ** 2 + (cote_ / 2) ** 2) / 4
-        tortue.left(90)
-
-        for trace in range(6):
-            tortue.fd(demi_size if trace in [0, 1, 5] else demi_size * 2)
-            tortue.right(90)
-
-        tortue.fd(demi_size)
-        tortue.seth(0)
-
-    register_shape_init(carre_, ['carre'])
-    register_shape_init(tri_moy_, ['trimoy'])
-
-    # Corps
-
-    apply_level(CANARD)
-    # on choisit le niveau par défaut
-
-    # le jeu est prêt on fait donc un restart pour que l'initialisation
-    # se termine et que le joueur puisse commencer la partie
-    restart()
-
-    for i, name in enumerate(name_pieces):
-        dict_piece[name].onclick(rotation_i(i), btn=3)
-
-        dict_piece[name].ondrag(dict_piece[name].goto)
-    # initialisation des bindings pour que le joueur puisse faire tourner
-    # l'élément et le déplacer
-
-    cv1.bind("<ButtonRelease-1>", where)
-    cv1.bind("<Double-Button-1>", reverse_para)
-    # 2 derniers binds pour metre à jour tabl
-    # et pour permettre au joueur de faire le symétrique du parallélogramme
-
-    s1.listen()
-    # il ne reste plus qu'à attendre un évènement
+            self.s1.register_shape(name, shape_)
 
 
-# Création des premières variables : les couleurs, les couleurs par défaut
-# et le nombre d'aides disponibles
-
-color_set = color_default = ["brown", "purple", "pink", "yellow", "blue", "red",
-                             "green"]
-
-helped = 2
-
+with open("sav_res.txt", "rb") as saved_resolution:
+    res_val = pickle.Unpickler(saved_resolution)
+    res = res_val.load()
 # Première fenêtre
 
 fen = tkinter.Tk()
 fen.title("Tangram Project")
 
-# Initialisation de la résolution
-# lecture dans sav_res.txt de la résolution du programme (par défaut 1000x700)
-with open("sav_res.txt", "rb") as saved_resolution:
-    res_val = pickle.Unpickler(saved_resolution)
-    res = res_val.load()
 
 # importation des images qui dépendent de la résolution (le fond des fenêtres)
 image1 = tkinter.PhotoImage(file=f"HT/{res}/Tangram.gif")
@@ -582,22 +589,24 @@ image8 = tkinter.PhotoImage(file=f"HT/{res}/quitter_end.gif")
 
 # configuration de la taille des fenêtres principales
 # et de la fenêtre de fin de jeu
-config_res = {
+CONFIG_RES = {
     "1000x700": {
-        "T_fen": 1000, "T_fen2": 700, "T_fen_end": 300, "T_fen_end2": 210,
+        "window": (1000, 700),
+        "end_window": (300, 210),
         "cote": 200,  # taille du côté principal des éléments du tangram
         # configuration des emplacements des différents boutons
         # qui dépendent de la résolution contenue dans les fenêtres
-        "xbtn": 410, "ybtn": 252, "xbtn1": 400, "ybtn1": 375, "xbtn2": 400,
-        "ybtn2": 490,
-        "xres": 5, "yres": 140, "xby": 180, "yby": 137
+        "x_btn": 410, "y_btn": 252, "x_btn1": 400, "y_btn1": 375, "x_btn2": 400,
+        "y_btn2": 490,
+        "x_res": 5, "y_res": 140, "xby": 180, "yby": 137
     },
     "500x350": {
-        "T_fen": 500, "T_fen2": 350, "T_fen_end": 150, "T_fen_end2": 105,
+        "window": (500, 350),
+        "end_window": (150, 105),
         "cote": 100,
-        "xbtn": 205, "ybtn": 126, "xbtn1": 200, "ybtn1": 188, "xbtn2": 200,
-        "ybtn2": 245,
-        "xres": 3, "yres": 70, "xby": 90, "yby": 69
+        "x_btn": 205, "y_btn": 126, "x_btn1": 200, "y_btn1": 188, "x_btn2": 200,
+        "y_btn2": 245,
+        "x_res": 3, "y_res": 70, "xby": 90, "yby": 69
     }
 }
 position_res = {
@@ -639,15 +648,17 @@ position_res = {
 # tableaux contenant toutes les informations pour la réalisation des niveaux
 # ( 1: emplacement, 2: rotation, 3: `reverse` value,
 #  4: emplacement de l'image de fond associée)
-CARRE = [position_res[res]['CARRE'], [0, 18, 18, 6, 12, 3, 6], False, None]
-CANARD = [position_res[res]['CANARD'], [0, 12, 15, 12, 6, 3, 6], False,
-          f"HT/{res}/canard.gif"]
-PROSTERNE = [position_res[res]['PROSTERNE'], [16, 13, 13, 19, 16, 2, 1], False,
-             f"HT/{res}/prosterne.gif"]
-LAPIN = [position_res[res]['LAPIN'], [3, 0, 21, 0, 12, 0, 4], False,
-         f"HT/{res}/lapin.gif"]
-FIGURE = [position_res[res]['FIGURE'], [15, 9, 0, 12, 9, 3, 9], True,
-          f"HT/{res}/figure.gif"]
+CARRE = TangramShape('CARRE', position_res[res]['CARRE'],
+                     [0, 18, 18, 6, 12, 3, 6], False, None)
+CANARD = TangramShape('CANARD', position_res[res]['CANARD'],
+                      [0, 12, 15, 12, 6, 3, 6], False, f"HT/{res}/canard.gif")
+PROSTERNE = TangramShape('PROSTERNE', position_res[res]['PROSTERNE'],
+                         [16, 13, 13, 19, 16, 2, 1], False,
+                         f"HT/{res}/prosterne.gif")
+LAPIN = TangramShape('LAPIN', position_res[res]['LAPIN'],
+                     [3, 0, 21, 0, 12, 0, 4], False, f"HT/{res}/lapin.gif")
+FIGURE = TangramShape('FIGURE', position_res[res]['FIGURE'],
+                      [15, 9, 0, 12, 9, 3, 9], True, f"HT/{res}/figure.gif")
 
 if res not in ["1000x700", '500x350']:
     raise ValueError("Seules les résolutions 1000x700 ou 500x350 sont prévues.")
@@ -656,7 +667,8 @@ if res not in ["1000x700", '500x350']:
 
 lab0 = tkinter.Label(fen, image=image1)
 # Ce label contient l'image de fond (la première de l'animation)
-btn = tkinter.Button(lab0, text="Jouer", command=tangram, image=image3)
+btn = tkinter.Button(lab0, text="Jouer",
+                     command=Tangram, image=image3)
 btn1 = tkinter.Button(lab0, text="Crédits",
                       command=lambda: os.system("gedit Crédits.txt"),
                       image=image4)
@@ -664,20 +676,20 @@ btn2 = tkinter.Button(lab0, text="Quitter", command=fen.quit, image=image5)
 # Création de 3 boutons permettant de jouer au tangram,
 # de quitter le jeu ou d'afficher dans gedit le fichier crédits.txt
 
-# récupération de la position de la fenêtre (ne marche que sous linux)
-window_geometry(fen, config_res[res]["T_fen"], config_res[res]["T_fen2"])
+# récupération de la position de la fenêtre (ne marche que sous linux (?))
+window_geometry(fen, *CONFIG_RES[res]["window"])
 # centrage de la fenêtre
 
 lab0.pack(side='top', fill='both', expand=1)
 # affichage du fond
 
 fen.after(2500, lambda: [lab0.configure(image=image2),
-                         btn.place(x=config_res[res]["xbtn"],
-                                   y=config_res[res]["ybtn"]),
-                         btn1.place(x=config_res[res]["xbtn1"],
-                                    y=config_res[res]["ybtn1"]),
-                         btn2.place(x=config_res[res]["xbtn2"],
-                                    y=config_res[res]["ybtn2"])]
+                         btn.place(x=CONFIG_RES[res]["x_btn"],
+                                   y=CONFIG_RES[res]["y_btn"]),
+                         btn1.place(x=CONFIG_RES[res]["x_btn1"],
+                                    y=CONFIG_RES[res]["y_btn1"]),
+                         btn2.place(x=CONFIG_RES[res]["x_btn2"],
+                                    y=CONFIG_RES[res]["y_btn2"])]
           )
 # après 2,5 secondes, on change l'image de fond et on affiche les boutons
 #  configurés plus haut, cette ligne permet de créer l'animation du début
