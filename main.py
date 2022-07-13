@@ -63,7 +63,6 @@ def sav_resolution(resolution: str) -> None:
 
 
 name_pieces = ['tri1', 'tri2', 'tri_moy', 'tripe1', 'tripe2', 'carre', 'para']
-l_seuil_rotation = [24, 24, 24, 24, 24, 6, 12]
 d_seuil_rotation = {'tri1': 24, 'tri2': 24, 'tri_moy': 24, 'tripe1': 24,
                     'tripe2': 24, 'carre': 24, 'para': 24}
 
@@ -77,11 +76,10 @@ class Piece(turtle.RawTurtle):
         self.screen = screen
         self.rot = 0
         self.modulo_rot = modulo_rot
-        # self.onclick(lambda x, y: print(self.name))
         self.onclick(self.rotation, btn=3)
-        self.onclick(lambda x, y: print(self.name), btn=1)
+        # self.onclick(lambda x, y: print(self.name), btn=1)
 
-        self.ondrag(self.goto)
+        self.ondrag(self.my_ondrag)
 
     def rotation(self, *_) -> None:
         self.rot += 1
@@ -89,10 +87,22 @@ class Piece(turtle.RawTurtle):
         self.seth(self.rot * 15)
         self.screen.update()
 
-# FIXME : changer la structure, on veut stocker la liste des configurations
-#  des pièces: position et rotation doivent être liés ensemble, pièce par pièce
+    def setup(self, state: tuple[tuple[float, float], int]) -> None:
+        self.goto(state[0])
+        self.seth(state[1] * 15)
+        self.rot = state[1]
+        self.screen.update()
 
-# Fixme bis: stockage des pièces ? liste/dict[nom] ?
+    def my_ondrag(self, x, y):
+        self.goto(x, y)
+        self.screen.update()
+
+# (nearly done): changer la structure, on veut stocker la liste des configurations
+#  des pièces : position et rotation doivent être liés ensemble, pièce par pièce
+
+# (nearly done): stockage des pièces ? liste/dict[nom] ?
+
+# TODO: clean up
 
 
 @dataclass
@@ -100,10 +110,23 @@ class TangramShape:
     """Describes a tangram shape : positions of the pieces, rotation, etc."""
 
     name: str
-    positions: list[tuple[float, float]]
-    rotations: list[int]
+    positions: dict[str, tuple[float, float]]
+    rotations: dict[str, int]
     para_flipped: bool
     img_file: Optional[str]
+
+    def __post_init__(self):
+        if set(self.rotations) != set(self.positions):
+            ValueError("positions and rotations must have the same keys")
+
+    def piece_state(self, name: str) -> tuple[tuple[float, float], int]:
+        return self.positions[name], self.rotations[name]
+
+    def pieces_state(self) -> dict[str, tuple[tuple[float, float], int]]:
+        return {name: self.piece_state(name) for name in self.rotations}
+
+    def __getitem__(self, name: str) -> tuple[tuple[float, float], int]:
+        return self.piece_state(name)
 
 
 class Tangram:
@@ -120,12 +143,12 @@ class Tangram:
                          ["Noir", "black"], ["Blanc", "white"],
                          ["Orange", "orange"], ["Bleu Ciel", "skyblue"],
                          ["Or", "gold"], ["Marron", "brown"]]
+    _default_hints = 18
 
     def __init__(self):
         """Main class for the tangram game"""
 
-        self.hints = 2
-        self.flipped = False
+        self.hints = self._default_hints
 
         # Initialisation de la résolution
         # lecture dans sav_res.txt de la résolution du programme
@@ -327,13 +350,20 @@ class Tangram:
         self.lvl = CANARD
         self.apply_level(CANARD)
 
-        cv1.bind("<ButtonRelease-1>", self.check_end)
+        cv1.bind("<ButtonRelease-1>", self.end_move)
         cv1.bind("<Double-Button-1>", self.flip_para)
 
         # et pour permettre au joueur de faire le symétrique du parallélogramme
 
         self.s1.listen()
         # il ne reste plus qu'à attendre un évènement
+
+    def set_shape(self, piece: Piece):
+        if piece.name == 'para':
+            para = ['para1', 'para2']
+            piece.shape(para[self.lvl.para_flipped])
+        else:
+            piece.shape(piece.name)
 
     @staticmethod
     def load_color() -> list[tkinter.StringVar]:
@@ -354,20 +384,21 @@ class Tangram:
 
         if self.hints >= 1:
             # si le joueur a droit à un peu d'aide, on l'aide
-            curseur = [self.dict_piece[name] for name in name_pieces]
+            names = list(name_pieces)  # type: list[str]
 
-            cpt = len(curseur)
+            cpt = len(names)
             j = randrange(0, cpt)
             # on tire un curseur au hasard
 
+            name = names[j]
+            piece = self.dict_piece[name]
             figure = self.lvl
-            curseur[j].goto(figure.positions[j])
-            curseur[j].seth(figure.rotations[j] * 15)
+            piece.setup(self.lvl[name])
 
-            if self.flipped != figure.para_flipped \
+            if self.para_is_flipped() != figure.para_flipped \
                     and (
-                    curseur[j].shape() == "para1"
-                    or curseur[j].shape() == "para2"):
+                    piece.shape() == "para1"
+                    or piece.shape() == "para2"):
                 self.flip_para()
             # for the current level, we put the randomly drawn cursor
             # in its place, rotate it correctly and update the table
@@ -402,19 +433,14 @@ class Tangram:
         # récupération des variables à modifier en tant que variable globale
 
         init_figure = CARRE
-        self.flipped = init_figure.para_flipped
         # the variable `helped` is reset to 2 (see function `hint()`)
-        self.hints = 2
+        self.hints = self._default_hints
         # call of the function init for the changes to take effect.
 
-        for i, name in enumerate(name_pieces):
-            self.dict_piece[name].up()
-
-            self.dict_piece[name].shape(name if name != 'para' else 'para1')
-
-            self.dict_piece[name].seth(init_figure.rotations[i] * 15)
-            self.dict_piece[name].rot = init_figure.rotations[i]
-            self.dict_piece[name].goto(init_figure.positions[i])
+        for name, piece in self.dict_piece.items():
+            piece.up()
+            self.set_shape(piece)
+            piece.setup(init_figure.piece_state(name))
 
         # self.s1.update()
         self.color_init()
@@ -463,94 +489,60 @@ class Tangram:
                  y=CONFIG_RES[self.res]["yby"])
         window_geometry(fen3, *CONFIG_RES[self.res]["end_window"])
 
-    def pos_pieces(self) -> list[tuple[float, float]]:
-        l_pos = []
-        for name in name_pieces:
-            piece = self.dict_piece[name]  # type: Piece
-            l_pos.append(piece.position())
-        return l_pos
+    @staticmethod
+    def nearly_pos(piece: Piece, pos: tuple[float, float], dist_lim=5) -> bool:
+        dist = distance(pos, piece.position())
+        return dist <= dist_lim
 
-    def check_end(self, _) -> bool:
+    def is_solved(self, piece: Piece, sol) -> bool:
+        if not self.nearly_pos(piece, sol[0]):
+            return False
+        piece.goto(sol[0])
+        self.s1.update()
+        return piece.rot == sol[1]
+
+    def check_one(self, piece: Piece) -> bool:
+        sol = self.lvl[piece.name]
+        return self.is_solved(piece, sol)
+
+    def check_pairs(self, piece1: Piece, piece2: Piece) -> bool:
+        sol1, sol2 = self.lvl[piece1.name], self.lvl[piece2.name]
+        if self.is_solved(piece1, sol1) and self.is_solved(piece2, sol2):
+            return True
+        return self.is_solved(piece1, sol2) and self.is_solved(piece2, sol1)
+
+    def check_end(self) -> bool:
         """Cette fonction détecte si le niveau est terminé ou non"""
-        dist_lim = 5
         # if a piece is in position with dist < dist_lim,
         # we place it automatically
-        pos_pieces = self.pos_pieces()
-        for i, pt in enumerate(self.lvl.positions):
-
-            # Firstly: checks the positions
-            # the two big triangles
-            if i in [0, 1]:
-                if distance(pos_pieces[i], pt) > dist_lim \
-                        and distance(pos_pieces[1 - i], pt) > dist_lim:
-                    return False
-                d1 = distance(pos_pieces[0], pt)
-                d2 = distance(pos_pieces[1], pt)
-                if d1 < d2:
-                    self.dict_piece['tri1'].goto(self.lvl.positions[i])
-                elif d1 - d2 < 5:
-                    self.dict_piece['tri1'].goto(self.lvl.positions[i])
-                    self.dict_piece['tri2'].goto(self.lvl.positions[i])
-                else:
-                    self.dict_piece['tri2'].goto(self.lvl.positions[i])
-
-            # the two small triangles
-            if i in [3, 4]:
-                if distance(pos_pieces[i], pt) > dist_lim \
-                        and distance(pos_pieces[7 - i], pt) > dist_lim:
-                    return False
-                d1 = distance(pos_pieces[3], pt)
-                d2 = distance(pos_pieces[4], pt)
-                if d1 < d2:
-                    self.dict_piece['tripe1'].goto(self.lvl.positions[i])
-                elif d1 - d2 < 5:
-                    self.dict_piece['tripe1'].goto(self.lvl.positions[i])
-                    self.dict_piece['tripe2'].goto(self.lvl.positions[i])
-                else:
-                    self.dict_piece['tripe2'].goto(self.lvl.positions[i])
-
-            # These first 4 tests were more complex, because we don't know
-            # which triangle the player will use (2 places for each triangle)
-
-            # the middle triangle, the square, the parallelogram
-            if i in [2, 5, 6]:
-                if distance(pos_pieces[i], pt) > dist_lim:
-                    return False
-                self.dict_piece[name_pieces[i]].goto(pt)
-
-        # second test: check if the rotation is the right one.
-        for i, name in enumerate(name_pieces):
-            cpt = self.dict_piece[name].rot
-            if i in [0, 1]:
-                if cpt not in [self.lvl.rotations[0], self.lvl.rotations[1]]:
-                    return False
-            elif i in [3, 4]:
-                if cpt not in [self.lvl.rotations[3], self.lvl.rotations[4]]:
-                    return False
-            elif i in [2, 5, 6]:
-                if cpt != self.lvl.rotations[i]:
-                    return False
-
-        # Last test checking if the parallelogram must be reversed or not.
-        if self.flipped != self.lvl.para_flipped:
+        if not self.check_pairs(self.dict_piece['tri1'],
+                                self.dict_piece['tri2']):
             return False
+        if not self.check_pairs(self.dict_piece['tripe1'],
+                                self.dict_piece['tripe2']):
+            return False
+        for one in ['tri_moy', 'carre', 'para']:
+            if not self.check_one(self.dict_piece[one]):
+                return False
+        # Last test checking if the parallelogram must be reversed or not.
+        return self.para_is_flipped() == self.lvl.para_flipped
 
+    def end_move(self, _):
+        if not self.check_end():
+            return None
         self.s1.update()
-
         self.end_tangram_level()
-        return True
+
+    def para_is_flipped(self) -> bool:
+        para = self.dict_piece['para']
+        return para.shape() == 'para2'
 
     def flip_para(self, *_) -> None:
         """Récupère la forme de l'objet C_para et lui assigne sa forme
          symétrique"""
-
-        forme = self.dict_piece['para'].shape()
-        if forme == "para1":
-            self.flipped = True
-            self.dict_piece['para'].shape("para2")
-        if forme == "para2":
-            self.flipped = False
-            self.dict_piece['para'].shape("para1")
+        para = self.dict_piece['para']
+        shape = para.shape()
+        para.shape({"para2": "para1", "para1": "para2"}[shape])
         self.s1.update()
 
     # pour créer les curseurs on enregistre une forme que l'on
@@ -591,74 +583,84 @@ image8 = tkinter.PhotoImage(file=f"HT/{res}/quitter_end.gif")
 # et de la fenêtre de fin de jeu
 CONFIG_RES = {
     "1000x700": {
-        "window": (1000, 700),
-        "end_window": (300, 210),
-        "cote": 200,  # taille du côté principal des éléments du tangram
-        # configuration des emplacements des différents boutons
-        # qui dépendent de la résolution contenue dans les fenêtres
+        "window": (1000, 700), "end_window": (300, 210), "cote": 200,
         "x_btn": 410, "y_btn": 252, "x_btn1": 400, "y_btn1": 375, "x_btn2": 400,
-        "y_btn2": 490,
-        "x_res": 5, "y_res": 140, "xby": 180, "yby": 137
+        "y_btn2": 490, "x_res": 5, "y_res": 140, "xby": 180, "yby": 137
     },
     "500x350": {
-        "window": (500, 350),
-        "end_window": (150, 105),
-        "cote": 100,
+        "window": (500, 350), "end_window": (150, 105), "cote": 100,
         "x_btn": 205, "y_btn": 126, "x_btn1": 200, "y_btn1": 188, "x_btn2": 200,
-        "y_btn2": 245,
-        "x_res": 3, "y_res": 70, "xby": 90, "yby": 69
+        "y_btn2": 245, "x_res": 3, "y_res": 70, "xby": 90, "yby": 69
     }
 }
 position_res = {
     '1000x700': {
-        'CARRE': [(409.00, 2.00), (308.00, -99.00), (257.00, 52.00),
-                  (358.00, 103.00),
-                  (258.00, 1.00), (308.00, 53.00), (232.00, -34.00)],
-        'CANARD': [(-161.00, -21.00), (-160.00, -21.00), (-262.00, -91.00),
-                   (-384.00, 10.00),
-                   (-60.00, 30.00), (-334.00, 61.00), (-309.00, -25.00)],
-        'PROSTERNE': [(-230.00, 26.00), (-154.00, 18.00), (-292.00, -21.00),
-                      (-304.00, 28.00),
-                      (-86.00, -107.00), (-39.00, -25.00), (-319.00, -55.00)],
-        'LAPIN': [(-281.00, -115.00), (-251.00, -44.00), (-253.00, 128.00),
-                  (-200.00, -81.00),
-                  (-250.00, -30.00), (-216.00, 59.00), (-198.00, 137.00)],
-        'FIGURE': [(-223.00, 16.00), (-240.00, -111.00), (-228.00, 138.00),
-                   (-285.00, 26.00),
-                   (-322.00, 33.00), (-219.00, -39.00), (-184.00, 131.00)]
+        'CARRE': {'tri1': (409.00, 2.00), 'tri2': (308.00, -99.00),
+                  'tri_moy': (257.00, 52.00), 'tripe1': (358.00, 103.00),
+                  'tripe2': (258.00, 1.00), 'carre': (308.00, 53.00),
+                  'para': (232.00, -34.00)},
+        'CANARD': {'tri1': (-161.00, -21.00), 'tri2': (-160.00, -21.00),
+                   'tri_moy': (-262.00, -91.00), 'tripe1': (-384.00, 10.00),
+                   'tripe2': (-60.00, 30.00), 'carre': (-334.00, 61.00),
+                   'para': (-309.00, -25.00)},
+        'PROSTERNE': {'tri1': (-230.00, 26.00), 'tri2': (-154.00, 18.00),
+                      'tri_moy': (-292.00, -21.00), 'tripe1': (-304.00, 28.00),
+                      'tripe2': (-86.00, -107.00), 'carre': (-39.00, -25.00),
+                      'para': (-319.00, -55.00)},
+        'LAPIN': {'tri1': (-281.00, -115.00), 'tri2': (-251.00, -44.00),
+                  'tri_moy': (-253.00, 128.00), 'tripe1': (-200.00, -81.00),
+                  'tripe2': (-250.00, -30.00), 'carre': (-216.00, 59.00),
+                  'para': (-198.00, 137.00)},
+        'FIGURE': {'tri1': (-223.00, 16.00), 'tri2': (-240.00, -111.00),
+                   'tri_moy': (-228.00, 138.00), 'tripe1': (-285.00, 26.00),
+                   'tripe2': (-322.00, 33.00), 'carre': (-219.00, -39.00),
+                   'para': (-184.00, 131.00)}
     },
     '500x350': {
-        'CARRE': [(204.5, 1.0), (154.0, -49.5), (128.5, 26.0), (179.0, 51.5),
-                  (129.0, 0.5),
-                  (154.0, 26.5), (116.0, -17.0)],
-        'CANARD': [(-80.5, -10.5), (-80.0, -10.5), (-131.0, -45.5),
-                   (-192.0, 5.0), (-30.0, 15.0),
-                   (-167.0, 30.5), (-154.5, -12.5)],
-        'PROSTERNE': [(-115.0, 13.0), (-77.0, 9.0), (-146.0, -10.5),
-                      (-152.0, 14.0), (-43.0, -53.5),
-                      (-19.5, -12.5), (-159.5, -27.5)],
-        'LAPIN': [(-140.5, -57.5), (-125.5, -22.0), (-126.5, 64.0),
-                  (-100.0, -40.5),
-                  (-125.0, -15.0), (-108.0, 29.5), (-99.0, 68.5)],
-        'FIGURE': [(-111.5, 8.0), (-120.0, -55.5), (-114.0, 69.0),
-                   (-142.5, 13.0), (-161.0, 16.5),
-                   (-109.5, -19.5), (-92.0, 65.5)]
+        'CARRE': {'tri1': (204.5, 1.0), 'tri2': (154.0, -49.5),
+                  'tri_moy': (128.5, 26.0), 'tripe1': (179.0, 51.5),
+                  'tripe2': (129.0, 0.5), 'carre': (154.0, 26.5),
+                  'para': (116.0, -17.0)},
+        'CANARD': {'tri1': (-80.5, -10.5), 'tri2': (-80.0, -10.5),
+                   'tri_moy': (-131.0, -45.5), 'tripe1': (-192.0, 5.0),
+                   'tripe2': (-30.0, 15.0), 'carre': (-167.0, 30.5),
+                   'para': (-154.5, -12.5)},
+        'PROSTERNE': {'tri1': (-115.0, 13.0), 'tri2': (-77.0, 9.0),
+                      'tri_moy': (-146.0, -10.5), 'tripe1': (-152.0, 14.0),
+                      'tripe2': (-43.0, -53.5), 'carre': (-19.5, -12.5),
+                      'para': (-159.5, -27.5)},
+        'LAPIN': {'tri1': (-140.5, -57.5), 'tri2': (-125.5, -22.0),
+                  'tri_moy': (-126.5, 64.0), 'tripe1': (-100.0, -40.5),
+                  'tripe2': (-125.0, -15.0), 'carre': (-108.0, 29.5),
+                  'para': (-99.0, 68.5)},
+        'FIGURE': {'tri1': (-111.5, 8.0), 'tri2': (-120.0, -55.5),
+                   'tri_moy': (-114.0, 69.0), 'tripe1': (-142.5, 13.0),
+                   'tripe2': (-161.0, 16.5), 'carre': (-109.5, -19.5),
+                   'para': (-92.0, 65.5)}
     }
 }
 # tableaux contenant toutes les informations pour la réalisation des niveaux
 # ( 1: emplacement, 2: rotation, 3: `reverse` value,
 #  4: emplacement de l'image de fond associée)
 CARRE = TangramShape('CARRE', position_res[res]['CARRE'],
-                     [0, 18, 18, 6, 12, 3, 6], False, None)
+                     {'tri1': 0, 'tri2': 18, 'tri_moy': 18, 'tripe1': 6,
+                      'tripe2': 12, 'carre': 3, 'para': 6}, False, None)
 CANARD = TangramShape('CANARD', position_res[res]['CANARD'],
-                      [0, 12, 15, 12, 6, 3, 6], False, f"HT/{res}/canard.gif")
+                      {'tri1': 0, 'tri2': 12, 'tri_moy': 15, 'tripe1': 12,
+                       'tripe2': 6, 'carre': 3, 'para': 6}, False,
+                      f"HT/{res}/canard.gif")
 PROSTERNE = TangramShape('PROSTERNE', position_res[res]['PROSTERNE'],
-                         [16, 13, 13, 19, 16, 2, 1], False,
+                         {'tri1': 16, 'tri2': 13, 'tri_moy': 13, 'tripe1': 19,
+                          'tripe2': 16, 'carre': 2, 'para': 1}, False,
                          f"HT/{res}/prosterne.gif")
 LAPIN = TangramShape('LAPIN', position_res[res]['LAPIN'],
-                     [3, 0, 21, 0, 12, 0, 4], False, f"HT/{res}/lapin.gif")
+                     {'tri1': 3, 'tri2': 0, 'tri_moy': 21, 'tripe1': 0,
+                      'tripe2': 12, 'carre': 0, 'para': 4}, False,
+                     f"HT/{res}/lapin.gif")
 FIGURE = TangramShape('FIGURE', position_res[res]['FIGURE'],
-                      [15, 9, 0, 12, 9, 3, 9], True, f"HT/{res}/figure.gif")
+                      {'tri1': 15, 'tri2': 9, 'tri_moy': 0, 'tripe1': 12,
+                       'tripe2': 9, 'carre': 3, 'para': 9}, True,
+                      f"HT/{res}/figure.gif")
 
 if res not in ["1000x700", '500x350']:
     raise ValueError("Seules les résolutions 1000x700 ou 500x350 sont prévues.")
@@ -683,7 +685,7 @@ window_geometry(fen, *CONFIG_RES[res]["window"])
 lab0.pack(side='top', fill='both', expand=1)
 # affichage du fond
 
-fen.after(2500, lambda: [lab0.configure(image=image2),
+fen.after(2000, lambda: [lab0.configure(image=image2),
                          btn.place(x=CONFIG_RES[res]["x_btn"],
                                    y=CONFIG_RES[res]["y_btn"]),
                          btn1.place(x=CONFIG_RES[res]["x_btn1"],
@@ -691,7 +693,7 @@ fen.after(2500, lambda: [lab0.configure(image=image2),
                          btn2.place(x=CONFIG_RES[res]["x_btn2"],
                                     y=CONFIG_RES[res]["y_btn2"])]
           )
-# après 2,5 secondes, on change l'image de fond et on affiche les boutons
+# après 2 secondes, on change l'image de fond et on affiche les boutons
 #  configurés plus haut, cette ligne permet de créer l'animation du début
 
 
