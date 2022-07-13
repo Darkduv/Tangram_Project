@@ -1,7 +1,9 @@
 # ! /usr/bin/python
 # -*- coding: utf-8 -*-
 
-"""Tangram Game. See Readme.md for more"""
+"""Tangram Game. See Readme.md for more
+
+TODO: Correct implementation for credits or bonus games : not an os command"""
 
 
 import turtle
@@ -55,7 +57,7 @@ def sav_resolution(resolution: str) -> None:
                           text="Vous devez relancer l'application"
                                " pour que les changements prennent effet !")
     btn_quit = tkinter.Button(advise, text="Fermer l'application",
-                              command=fen.quit)
+                              command=project.quit)
     redem.pack()
     btn_quit.pack()
 
@@ -96,13 +98,6 @@ class Piece(turtle.RawTurtle):
     def my_ondrag(self, x, y):
         self.goto(x, y)
         self.screen.update()
-
-# (nearly done): changer la structure, on veut stocker la liste des configurations
-#  des pièces : position et rotation doivent être liés ensemble, pièce par pièce
-
-# (nearly done): stockage des pièces ? liste/dict[nom] ?
-
-# TODO: clean up
 
 
 @dataclass
@@ -189,25 +184,23 @@ class Tangram:
         fichier.add_cascade(label="Options", menu=options)
         color = tkinter.Menu(options, tearoff=1)
         options.add_cascade(label="Couleur", menu=color)
-        list_menus = [tkinter.Menu(options, tearoff=0) for _ in range(7)]
         # ici nous allons définir un menu pour chaque élément du tangram qui
         # permettra au joueur de personnaliser les couleurs de son jeu qui sont
         # automatiquement mises à jour grâce à la fonction color_init()
+        color_labels = ["Triangle 1", "Triangle 2", "Triangle Moyen",
+                        "Petit Triangle 1", "Petit Triangle 2", "Carre",
+                        "Parallélogramme"]
 
-        liste_init = [["Triangle 1", list_menus[0], self.l_color[0]],
-                      ["Triangle 2", list_menus[1], self.l_color[1]],
-                      ["Triangle Moyen", list_menus[2], self.l_color[2]],
-                      ["Petit Triangle 1", list_menus[3], self.l_color[3]],
-                      ["Petit Triangle 2", list_menus[4], self.l_color[4]],
-                      ["Carre", list_menus[5], self.l_color[5]],
-                      ["Parallélogramme", list_menus[6], self.l_color[6]]]
-
-        for i_label, i_menu, i_color in liste_init:
-            color.add_cascade(label=i_label, menu=i_menu)
+        def menu_chose_color(var_col_piece: tkinter.StringVar) -> tkinter.Menu:
+            menu_ = tkinter.Menu(color, tearoff=0)
             for j_label, j_val in self._liste_init_color:
-                i_menu.add_radiobutton(label=j_label, value=j_val,
-                                       variable=i_color,
-                                       command=self.color_init)
+                menu_.add_radiobutton(label=j_label, value=j_val,
+                                      variable=var_col_piece,
+                                      command=self.color_init)
+            return menu_
+
+        for i_label, i_color in zip(color_labels, self.l_color):
+            color.add_cascade(label=i_label, menu=menu_chose_color(i_color))
 
         color.add_separator()
 
@@ -223,7 +216,7 @@ class Tangram:
         resolution.add_command(label="500x350",
                                command=lambda: sav_resolution("500x350"))
         # permet de modifier la résolution courante
-        fichier.add_command(label="Quitter", command=fen.quit)
+        fichier.add_command(label="Quitter", command=project.quit)
         # permet au joueur de quitter complètement le programme
 
         niveaux = tkinter.Menu(menu1, tearoff=0)
@@ -472,21 +465,22 @@ class Tangram:
         fen3 = tkinter.Toplevel()  # Initialisation d'une fenêtre
         # qui a un fond que l'on affiche grâce à un label
         fen3.title("Bravo !")
-        fond = tkinter.Label(fen3, image=image6)  # le fond est ici une image
+        fond = tkinter.Label(fen3, image=pictures("end"))
 
         # Creation of a restart and quit button.
         # (the 'quit' one quit everything)
         restart = tkinter.Button(
-            fond, image=image7,
+            fond, image=pictures("restart"),
             command=lambda: [self.restart(), fen3.destroy()])
-        by = tkinter.Button(fond, image=image8, command=fen.quit)
+        bye = tkinter.Button(fond, image=pictures("quit_end"),
+                             command=project.quit)
 
         fond.pack()
         # affichage et centrage de la fenêtre.
         restart.place(x=CONFIG_RES[self.res]["x_res"],
                       y=CONFIG_RES[self.res]["y_res"])
-        by.place(x=CONFIG_RES[self.res]["xby"],
-                 y=CONFIG_RES[self.res]["yby"])
+        bye.place(x=CONFIG_RES[self.res]["xby"],
+                  y=CONFIG_RES[self.res]["yby"])
         window_geometry(fen3, *CONFIG_RES[self.res]["end_window"])
 
     @staticmethod
@@ -563,21 +557,15 @@ class Tangram:
 with open("sav_res.txt", "rb") as saved_resolution:
     res_val = pickle.Unpickler(saved_resolution)
     res = res_val.load()
-# Première fenêtre
+    if res not in ["1000x700", '500x350']:
+        raise ValueError(
+            "Seules les résolutions 1000x700 ou 500x350 sont prévues.")
 
-fen = tkinter.Tk()
-fen.title("Tangram Project")
 
-
-# importation des images qui dépendent de la résolution (le fond des fenêtres)
-image1 = tkinter.PhotoImage(file=f"HT/{res}/Tangram.gif")
-image2 = tkinter.PhotoImage(file=f"HT/{res}/main.gif")
-image3 = tkinter.PhotoImage(file=f"HT/{res}/Jouer.gif")
-image4 = tkinter.PhotoImage(file=f"HT/{res}/Crédits.gif")
-image5 = tkinter.PhotoImage(file=f"HT/{res}/Quitter.gif")
-image6 = tkinter.PhotoImage(file=f"HT/{res}/end.gif")
-image7 = tkinter.PhotoImage(file=f"HT/{res}/reco.gif")
-image8 = tkinter.PhotoImage(file=f"HT/{res}/quitter_end.gif")
+files_img = {"base_menu": "Tangram.gif", "main": "main.gif",
+             "play": "Jouer.gif",
+             "credits": "Crédits.gif", "quit": "Quitter.gif", "end": "end.gif",
+             "restart": "reco.gif", "quit_end": "quitter_end.gif"}
 
 # configuration de la taille des fenêtres principales
 # et de la fenêtre de fin de jeu
@@ -662,42 +650,70 @@ FIGURE = TangramShape('FIGURE', position_res[res]['FIGURE'],
                        'tripe2': 9, 'carre': 3, 'para': 9}, True,
                       f"HT/{res}/figure.gif")
 
-if res not in ["1000x700", '500x350']:
-    raise ValueError("Seules les résolutions 1000x700 ou 500x350 sont prévues.")
 
-# Fin de l'initialisation de la fenêtre
+# Window starting the project
 
-lab0 = tkinter.Label(fen, image=image1)
-# Ce label contient l'image de fond (la première de l'animation)
-btn = tkinter.Button(lab0, text="Jouer",
-                     command=Tangram, image=image3)
-btn1 = tkinter.Button(lab0, text="Crédits",
-                      command=lambda: os.system("gedit Crédits.txt"),
-                      image=image4)
-btn2 = tkinter.Button(lab0, text="Quitter", command=fen.quit, image=image5)
-# Création de 3 boutons permettant de jouer au tangram,
-# de quitter le jeu ou d'afficher dans gedit le fichier crédits.txt
+class MyPhotoImg(tkinter.PhotoImage):
+    """Trick to avoid problems with garbage collector.
 
-# récupération de la position de la fenêtre (ne marche que sous linux (?))
-window_geometry(fen, *CONFIG_RES[res]["window"])
-# centrage de la fenêtre
+    There is a bug in PhotoImage implementation, with the garbage collector:
+    for example if we were to do :
 
-lab0.pack(side='top', fill='both', expand=1)
-# affichage du fond
+    def make_label():
+        img = tkinter.PhotoImage(file=file_name)
+        return tkinter.Label(master, image=img)
+    lab = make_label()
 
-fen.after(2000, lambda: [lab0.configure(image=image2),
-                         btn.place(x=CONFIG_RES[res]["x_btn"],
-                                   y=CONFIG_RES[res]["y_btn"]),
-                         btn1.place(x=CONFIG_RES[res]["x_btn1"],
-                                    y=CONFIG_RES[res]["y_btn1"]),
-                         btn2.place(x=CONFIG_RES[res]["x_btn2"],
-                                    y=CONFIG_RES[res]["y_btn2"])]
-          )
-# après 2 secondes, on change l'image de fond et on affiche les boutons
-#  configurés plus haut, cette ligne permet de créer l'animation du début
+    then the garbage collector will (??!!) delete the image.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.img = self  # no more bug
 
 
+def pictures(label: str):
+    name_file = files_img[label]
+    return MyPhotoImg(file=f"HT/{res}/{name_file}")
+
+
+class Project(tkinter.Tk):
+    """Base of the project"""
+
+    def __init__(self):
+        super().__init__()
+        self.title("Tangram Project")
+
+        self.start_window = tkinter.Label(self, image=pictures("base_menu"))
+
+        window_geometry(self, *CONFIG_RES[res]["window"])
+        # centrage de la fenêtre
+        self.start_window.pack(side='top', fill='both', expand=1)
+        # affichage du fond
+
+        # après 2 secondes, on change l'image de fond et on affiche les boutons
+        # cette ligne permet de créer l'animation du début
+        self.after(2000, self.show_menu)
+
+    def show_menu(self):
+        btn = tkinter.Button(self.start_window, text="Jouer",
+                             command=Tangram, image=pictures("play"))
+        btn1 = tkinter.Button(self.start_window, text="README (Crédits)",
+                              command=lambda: os.system("okular README.md"),
+                              image=pictures("credits"))
+        btn2 = tkinter.Button(self.start_window, text="Quitter",
+                              command=self.quit, image=pictures("quit"))
+        # Création de 3 boutons permettant de jouer au tangram,
+        # de quitter le jeu ou d'afficher dans gedit le fichier crédits.txt
+        self.start_window.configure(image=pictures("main"))
+        btn.place(x=CONFIG_RES[res]["x_btn"], y=CONFIG_RES[res]["y_btn"])
+        btn1.place(x=CONFIG_RES[res]["x_btn1"], y=CONFIG_RES[res]["y_btn1"])
+        btn2.place(x=CONFIG_RES[res]["x_btn2"], y=CONFIG_RES[res]["y_btn2"])
+
+
+project = Project()
 # on entre dans la boucle principale...
-fen.mainloop()
+project.config()
+project.mainloop()
 # ... et on détruit la fenêtre principale si l'on en sort.
-fen.destroy()
+project.destroy()
