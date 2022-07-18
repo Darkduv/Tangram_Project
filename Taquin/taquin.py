@@ -166,6 +166,7 @@ class PuzzleGame:
         self.puzzle.draw_all()
 
     def done_label(self):
+        """Makes a label displaying the finished puzzle."""
         return tkinter.Label(self.main_window, image=self.done_img.img)
 
     @staticmethod
