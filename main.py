@@ -102,7 +102,7 @@ class Piece(turtle.RawTurtle):
 
 @dataclass
 class TangramShape:
-    """Describes a tangram shape : positions of the pieces, rotation, etc."""
+    """Describes a tangram shape : positions of the choose_piece, rotation, etc."""
 
     name: str
     positions: dict[str, tuple[float, float]]
